@@ -1,0 +1,11 @@
+# Build artifacts
+bin/
+*.exe
+*.dll
+*.obj
+
+# IDE
+.vscode/
+
+# Backup
+backup/
