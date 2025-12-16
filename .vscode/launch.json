@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Server",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/server.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Run Client",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/client.exe",
+      "args": ["127.0.0.1", "9000"],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
