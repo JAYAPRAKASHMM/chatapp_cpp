@@ -16,7 +16,11 @@ echo ===============================
 echo Building SERVER
 echo ===============================
 
+mkdir "%~dp0build\obj" 2>nul
+mkdir "%~dp0bin\server" 2>nul
+
 cl /EHsc /MD ^
+/Fo"%~dp0build\obj\\" ^
  /I"C:\src" ^
  /I"%~dp0common" ^
  "%~dp0src\server\main.cpp" ^
