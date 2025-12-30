@@ -18,6 +18,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <iostream>
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -369,10 +370,15 @@ void connection_thread(SOCKET s) {
 /* ======================= main ======================= */
 
 int run_server() {
-    logger_init();
-
     Config cfg;
-    if (!cfg.load("server.ini")) {
+    bool configLoaded = cfg.load("server.ini");
+    if (!configLoaded) {
+        std::cerr << "Failed to load server.ini, using defaults" << std::endl;
+    }
+
+    logger_init(cfg);
+
+    if (!configLoaded) {
         log_error("Failed to load server.ini, using defaults");
     }
 
@@ -437,5 +443,6 @@ int run_server() {
     close(listenSock);
 #endif
     redisFree(redis_ctx);
+    logger_shutdown();
     return 0;
 }
