@@ -12,7 +12,7 @@
 #include <cstring>
 #include <chrono>
 
-#include "../../common/protocol.h"
+#include "../../common/protocol/protocol.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 

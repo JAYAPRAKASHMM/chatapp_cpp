@@ -3,10 +3,15 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+#ifndef _WIN32
+#include <signal.h>
+#include <unistd.h>
+#endif
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <atomic>
 #include <thread>
 #include <mutex>
 #include <map>
@@ -20,13 +25,52 @@ extern "C" {
 #include <hiredis/hiredis.h>
 }
 
-#include "../../common/protocol.h"
+#include "../../common/protocol/protocol.h"
+#include "../../common/config/config.h"
 #include "server_logger.h"
+
+#ifdef _WIN32
+#define INVALID_SOCKET_VALUE INVALID_SOCKET
+#else
+#define INVALID_SOCKET_VALUE -1
+#endif
 
 /* ======================= Redis ======================= */
 
 static std::mutex redis_m;
 static redisContext* redis_ctx = nullptr;
+
+#ifdef _WIN32
+static std::atomic<bool> server_running{true};
+static SOCKET listenSock = INVALID_SOCKET;
+
+BOOL WINAPI console_ctrl_handler(DWORD ctrlType) {
+    switch (ctrlType) {
+    case CTRL_C_EVENT:
+        log_info("Received CTRL+C, initiating shutdown");
+        server_running = false;
+        if (listenSock != INVALID_SOCKET) {
+            closesocket(listenSock);
+            listenSock = INVALID_SOCKET;
+        }
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
+#else
+static std::atomic<bool> server_running{true};
+static int listenSock = -1;
+
+static void sigint_handler(int /*signo*/) {
+    log_info("Received SIGINT, initiating shutdown");
+    server_running = false;
+    if (listenSock != -1) {
+        close(listenSock);
+        listenSock = -1;
+    }
+}
+#endif
 
 bool redis_connect(const char* ip, int port) {
     redis_ctx = redisConnect(ip, port);
@@ -327,7 +371,21 @@ void connection_thread(SOCKET s) {
 int run_server() {
     logger_init();
 
-    if (!redis_connect("127.0.0.1", 6379)) {
+    Config cfg;
+    if (!cfg.load("server.ini")) {
+        log_error("Failed to load server.ini, using defaults");
+    }
+
+    /* Install console handler for CTRL+C (cross-platform) */
+#ifdef _WIN32
+    SetConsoleCtrlHandler(console_ctrl_handler, TRUE);
+#else
+    signal(SIGINT, sigint_handler);
+#endif
+
+    std::string redisHost = cfg.getString("Redis", "host", "127.0.0.1");
+    int redisPort = cfg.getInt("Redis", "port", 6379);
+    if (!redis_connect(redisHost.c_str(), redisPort)) {
         return 1;
     }
 
@@ -343,9 +401,11 @@ int run_server() {
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_flags    = AI_PASSIVE;
 
-    getaddrinfo(nullptr, "9000", &hints, &res);
+    int listenPort = cfg.getInt("Server", "port", 9000);
+    std::string portStr = std::to_string(listenPort);
+    getaddrinfo(nullptr, portStr.c_str(), &hints, &res);
 
-    SOCKET listenSock = socket(
+    listenSock = socket(
         res->ai_family,
         res->ai_socktype,
         res->ai_protocol
@@ -355,12 +415,14 @@ int run_server() {
     listen(listenSock, SOMAXCONN);
     freeaddrinfo(res);
 
-    log_info("Server listening on port %d", 9000);
+    log_info("Server listening on port %d", listenPort);
 
-    while (true) {
+    while (server_running) {
         SOCKET client = accept(listenSock, nullptr, nullptr);
-        if (client == INVALID_SOCKET)
+        if (client == INVALID_SOCKET_VALUE) {
+            if (!server_running) break; /* shutdown requested */
             break;
+        }
 
         log_info("Client connected (socket=%llu)",
                  (unsigned long long)client);
@@ -368,8 +430,12 @@ int run_server() {
         std::thread(connection_thread, client).detach();
     }
 
+#ifdef _WIN32
     closesocket(listenSock);
     WSACleanup();
+#else
+    close(listenSock);
+#endif
     redisFree(redis_ctx);
     return 0;
 }
