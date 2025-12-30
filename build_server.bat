@@ -19,7 +19,7 @@ echo ===============================
 cl /EHsc /MD ^
  /I"C:\src" ^
  /I"%~dp0common" ^
- "%~dp0src\server\server.cpp" ^
+ "%~dp0src\server\main.cpp" ^
  "%~dp0src\server\server.cpp" ^
  "%~dp0src\server\server_logger.cpp" ^
  /link ^

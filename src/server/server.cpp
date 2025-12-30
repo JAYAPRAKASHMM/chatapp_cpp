@@ -324,7 +324,7 @@ void connection_thread(SOCKET s) {
 
 /* ======================= main ======================= */
 
-int main() {
+int run_server() {
     logger_init();
 
     if (!redis_connect("127.0.0.1", 6379)) {
