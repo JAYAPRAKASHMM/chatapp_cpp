@@ -22,6 +22,7 @@ cl /EHsc /MD ^
  "%~dp0src\server\main.cpp" ^
  "%~dp0src\server\server.cpp" ^
  "%~dp0src\server\server_logger.cpp" ^
+ "%~dp0common\config\config.cpp" ^
  /link ^
  /LIBPATH:"C:\src\hiredis\build\Release" ^
  "C:\src\hiredis\build\Release\hiredis.lib" Ws2_32.lib Mswsock.lib ^
