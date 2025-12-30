@@ -1,5 +1,6 @@
 # Build artifacts
 bin/
+logs/
 *.exe
 *.dll
 *.obj
